@@ -38,6 +38,53 @@ class ScontrinoController extends Controller
     } 
 
     /**
+     * Riceve in POST id, id_scontrino ed eventuale errore, degli scontrini stampati
+     */
+    public function setStampati(Request $request)
+    {
+        $input = $request->all();
+
+        if(empty($input['id']) || empty($input['id_scontrino'])) {
+            return $this->sendErr("Parameters missing");
+        }
+        $ticket = Scontrino::find($input['id']);
+        if(empty($ticket)) {
+            return $this->sendErr("Ticket not found", ($request->wantsJson() || $request->isJson()), 404);
+        }
+        if($ticket->stato!=0) {
+            return $this->sendErr("Ticket status not compatible", ($request->wantsJson() || $request->isJson()));
+        }
+        $ticket->id_scontrino = $input['id_scontrino'];
+        $ticket->errore = $input['errore'] ??'';
+        $ticket->stato=1;
+        $ticket->save();
+        return response()->noContent();
+    }
+    /**
+     * Riceve in POST id degli scontrini inviati
+     */
+    public function setInviati(Request $request)
+    {
+        $input = $request->all();
+
+        if(empty($input['id'])) {
+            return $this->sendErr("Parameters missing");
+        }
+        $ticket = Scontrino::find($input['id']);
+        if(empty($ticket)) {
+            return $this->sendErr("Ticket not found", ($request->wantsJson() || $request->isJson()), 404);
+        }
+        if($ticket->stato!=1) {
+            return $this->sendErr("Ticket status not compatible", ($request->wantsJson() || $request->isJson()));
+        }
+        $ticket->errore = $input['errore'] ??'';
+        $ticket->stato=2;
+        $ticket->save();
+        return response()->noContent();
+    }
+
+
+    /**
      * Riceve in POST i nuovi importi docimenti di cui occorrerà stampare lo scontrino.
      *
      * @param  \Illuminate\Http\Request  $request
@@ -78,9 +125,13 @@ class ScontrinoController extends Controller
         return response()->json([],204);
     }
 
-    private function sendErr($message)
+    private function sendErr($message, $isJson=true, $status=400)
     {
-        return response()->json(array('error' => $message),400);
+        if($isJson) {
+            return response()->json(array('error' => $message),$status);
+        } else {
+            return response($message ,$status);
+        }
     }
 
 }

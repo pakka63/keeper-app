@@ -23,5 +23,7 @@ Route::any('/xcube', function (Request $request) { return $request->wantsJson() 
 Route::post('/xcube', 'ScontrinoController@storeData');
 Route::get('/xcube/scontriniNuovi', 'ScontrinoController@getNuovi');
 Route::get('/xcube/scontriniStampati', 'ScontrinoController@getDaInviare');
+Route::post('/xcube/scontriniStampati', 'ScontrinoController@setStampati');
 Route::get('/xcube/scontriniInviati', 'ScontrinoController@getInviati');
+Route::post('/xcube/scontriniInviati', 'ScontrinoController@setInviati');
 
