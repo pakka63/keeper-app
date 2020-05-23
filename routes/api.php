@@ -23,7 +23,7 @@ Route::any('/xcube', function (Request $request) { return $request->wantsJson() 
 Route::post('/xcube', 'ScontrinoController@storeData');
 Route::get('/xcube/scontriniNuovi', 'ScontrinoController@getNuovi');
 Route::get('/xcube/scontriniStampati', 'ScontrinoController@getDaInviare');
-Route::post('/xcube/scontriniStampati', 'ScontrinoController@setStampati');
-Route::get('/xcube/scontriniInviati', 'ScontrinoController@getInviati');
-Route::post('/xcube/scontriniInviati', 'ScontrinoController@setInviati');
+Route::post('/xcube/scontriniStampati', 'ScontrinoController@setStampati'); // <-- marca sul DB gli scontrimi stampati
+Route::get('/xcube/scontriniInviati', 'ScontrinoController@getInviati');    // Storico scontrini
+Route::post('/xcube/inviaScontrini', 'ScontrinoController@inviaASAP');   // <-- invia a SAP gli scontrini indicati
 

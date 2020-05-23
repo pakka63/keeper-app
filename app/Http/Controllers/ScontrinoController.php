@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Scontrino;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 class ScontrinoController extends Controller
 {
@@ -61,25 +62,75 @@ class ScontrinoController extends Controller
         return response()->noContent();
     }
     /**
-     * Riceve in POST id degli scontrini inviati
+     * // invia a SAP gli scontrini indicati
      */
-    public function setInviati(Request $request)
+    public function inviaASAP(Request $request)
     {
+        $token = false;
+
         $input = $request->all();
 
-        if(empty($input['id'])) {
-            return $this->sendErr("Parameters missing");
+        if(empty($input['tickets']) || !is_array($input['tickets'])) {
+            return $this->sendErr("Parameter 'tickets' missing or invalid");
         }
-        $ticket = Scontrino::find($input['id']);
-        if(empty($ticket)) {
-            return $this->sendErr("Ticket not found", ($request->wantsJson() || $request->isJson()), 404);
+
+
+        /*
+        $client = new Client(); //GuzzleHttp\Client
+        $response = $client->get($sap['TokenEndpoint'], ['auth' => [$sap['clientId'], $sap['clientPwd']]);
+
+JSON di risposta:
+"Answers": [{
+    "ID_Documento": "FT0123",
+
+      "ticketNumber": "AA8364771",
+      "dateTime": "0203201540",
+      },{
+    "ID_Documento": "FT0124",
+
+      "ticketNumber": "AA8364772",
+      "dateTime": "0203201541",
+      },{
+    "ID_Documento": "FT0125",
+
+      "ticketNumber": "AA8364773",
+      "dateTime": "0203201542",
+     }]
+
+        */
+        $answers = array();
+
+        foreach ($input['tickets'] as $i => $ticket) {
+            if(empty($ticket['id'])) {
+                return $this->sendErr('Ticket item #' . $i+1 . ' is invalid');
+            }
+            $ticket = Scontrino::find($ticket['id']);
+            if(empty($ticket)) {
+                return $this->sendErr("Ticket not found", ($request->wantsJson() || $request->isJson()), 404);
+            }
+            $obj = (object) array('ID_Documento' => $ticket->id_documento, "ticketNumber" => $ticket->id_scontrino, "dateTime" => $ticket->dataOraStampa);
+            $answers[] = $obj;
+    
         }
-        if($ticket->stato!=1) {
-            return $this->sendErr("Ticket status not compatible", ($request->wantsJson() || $request->isJson()));
-        }
-        $ticket->errore = $input['errore'] ??'';
-        $ticket->stato=2;
-        $ticket->save();
+
+        $sapWS = config('sapWS');
+        $response = Http::withBasicAuth($sapWS['Oauth2']['clientId'], $sapWS['Oauth2']['clientPwd'])->post($sapWS['Oauth2']['tokenEndpoint']);
+        if(!$response->successful()) {
+            $errTxt = "Access to SAP Ws not granted\n". $response->getStatusCode() . ' - ' . $response->getReasonPhrase();
+            return $this->sendErr($errTxt, ($request->wantsJson() || $request->isJson()), 404);
+        };
+        // Memorizzo il token di ritorno...
+        $result = json_decode($response->getBody());
+        $token = $result->access_token;
+        $token = $token;
+
+        $response = Http::withToken($token)->post($sapWS['EndPoint'], ['Answers' => $answers]);
+        if(!$response->successful()) {
+            $errTxt = "Access to SAP Ws not granted\n". $response->getStatusCode() . ' - ' . $response->getReasonPhrase();
+            return $this->sendErr($errTxt, ($request->wantsJson() || $request->isJson()), 404);
+        };
+        // Memorizzo il token di ritorno...
+        $result = json_decode($response->getBody());
         return response()->noContent();
     }
 

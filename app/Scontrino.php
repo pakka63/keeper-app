@@ -17,12 +17,15 @@ class Scontrino extends Model
 
     //Per formattare i risultati, uso i Mutators (https://laravel.com/docs/7.x/eloquent-mutators)
     public function getCreatedAtAttribute($value) {
-
         return Carbon::parse($value)->format($this->dateTimeFormat);
     }
-    public function getUpdatedAtAttribute($value) {
 
+    public function getUpdatedAtAttribute($value) {
         return Carbon::parse($value)->format($this->dateTimeFormat);
+    }
+
+    public function getDataOraStampaAttribute() {
+        return Carbon::parse($this->attributes['updated_at'])->format('ymdHi');
     }
     public function getPrezzoAttribute($value) {
         return +$value; // Passo il dato come numerico in modo da conserire il sort corretto da VUE
