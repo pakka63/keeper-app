@@ -19,25 +19,28 @@ class ScontrinoController extends Controller
      */
 
     private $fields = ['id', 'id_documento', 'testo', 'prezzo', 'created_at', 'errore'];
-    public function getNuovi()
+    public function getNuovi(Request $request)
     {
-        $result =  Scontrino::where('stato', 0)->get($this->fields);
-        //anche questo funziona =
-        //$result =  Scontrino::select($this->fields)->where('stato', 0)->get();
-        return $result->toJson();
+      $inProva = $request->test? 1 : 0;
+      $result =  Scontrino::where('stato', 0)->where('in_prova', $inProva)->get($this->fields);
+      //anche questo funziona =
+      //$result =  Scontrino::select($this->fields)->where('stato', 0)->get();
+      return $result->toJson();
     } 
-    public function getDaInviare()
+    public function getDaInviare(Request $request)
     {
-        $fld = array_merge($this->fields, ['updated_at']);
-        $result =  Scontrino::where('stato', 1)->get($fld);
-        return $result->toJson();
+      $inProva = $request->test? 1 : 0;
+      $fld = array_merge($this->fields, ['updated_at']);
+      $result =  Scontrino::where('stato', 1)->where('in_prova', $inProva)->get($fld);
+      return $result->toJson();
     } 
 
-    public function getInviati()
+    public function getInviati(Request $request)
     {
-        $fld = array_merge($this->fields, ['updated_at']);
-        $result =  Scontrino::where('stato', 2)->get($fld);
-        return $result->toJson();
+      $inProva = $request->test? 1 : 0;
+      $fld = array_merge($this->fields, ['updated_at']);
+      $result =  Scontrino::where('stato', 2)->where('in_prova', $inProva)->get($fld);
+      return $result->toJson();
     } 
 
     /**
@@ -217,12 +220,15 @@ JSON di risposta:
     }
     // Qui adesso archivio i record.
     foreach ($input['tickets'] as $i => $ticket) {
+
+      $tot = Scontrino::where('id_documento', trim($ticket['ID_Documento']))->count();
       $ticket = Scontrino::create([
-        'id_documento' => $ticket['ID_Documento'],
+        'id_documento' => trim($ticket['ID_Documento']),
         'prezzo' => +$ticket['price'],
         'testo' => $ticket['Text'],
         'in_prova' => $input['systemType'] == 'TEST',
-        'response_url' => $input['responseUrl']
+        'response_url' => $input['responseUrl'],
+        'errore' => ($tot > 0 ? 'Documento già ricevuto' : ''),
       ]);
     }
 

@@ -12,7 +12,7 @@ class Scontrino extends Model
     protected $dateTimeFormat = 'Y/m/d H:i'; // <-- lo uso per i getters delle date. Nb.: data rovescia per preservare il sort. verrà formattata da Vue
 
     protected $fillable = [
-        'id_documento', 'prezzo', 'testo', 'in_prova', 'response_url'
+        'id_documento', 'prezzo', 'testo', 'in_prova', 'response_url', 'errore'
     ];
 
     //Per formattare i risultati, uso i Mutators (https://laravel.com/docs/7.x/eloquent-mutators)
