@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class ScontrinoController extends Controller
 {
@@ -19,14 +20,42 @@ class ScontrinoController extends Controller
      */
 
     private $fields = ['id', 'id_documento', 'testo', 'prezzo', 'created_at', 'errore'];
+    
     public function getNuovi(Request $request)
     {
       $inProva = $request->test? 1 : 0;
-      $result =  Scontrino::where('stato', 0)->where('in_prova', $inProva)->get($this->fields);
+      $query =  Scontrino::where('stato', 0)->where('in_prova', $inProva);
+      try {
+          $result = $query->get($this->fields);
+      } catch (Throwable $e) {
+        $message = explode("\n",$e->getMessage());
+        return $this->sendErr($message[0]);
+      }
       //anche questo funziona =
       //$result =  Scontrino::select($this->fields)->where('stato', 0)->get();
       return $result->toJson();
-    } 
+    }
+    
+    public function destroyNuovi(Request $request)
+    {
+      $inProva = $request->test? 1 : 0;
+      if(empty($request->id)) {
+        return $this->sendErr("Parameter ID missing");
+      }
+      try {
+        $scontrino = Scontrino::find($request->id);
+        if($scontrino->stato == 0 && $scontrino->in_prova == $inProva) {
+          $scontrino->delete();
+        }
+      } catch (Throwable $e) {
+        $message = explode("\n",$e->getMessage());
+        return $this->sendErr($message[0]);
+      }
+      //anche questo funziona =
+      //$result =  Scontrino::select($this->fields)->where('stato', 0)->get();
+      return response()->noContent();
+    }
+
     public function getDaInviare(Request $request)
     {
       $inProva = $request->test? 1 : 0;

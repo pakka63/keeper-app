@@ -22,6 +22,7 @@ Route::any('/xcube', function (Request $request) { return $request->wantsJson() 
 // Metodo post è prioritario rispetto a any
 Route::post('/xcube', 'ScontrinoController@storeData');
 Route::get('/xcube/scontriniNuovi', 'ScontrinoController@getNuovi');
+Route::delete('/xcube/scontriniNuovi', 'ScontrinoController@destroyNuovi');
 Route::get('/xcube/scontriniStampati', 'ScontrinoController@getDaInviare');
 Route::post('/xcube/scontriniStampati', 'ScontrinoController@setStampati'); // <-- marca sul DB gli scontrimi stampati
 Route::get('/xcube/scontriniInviati', 'ScontrinoController@getInviati');    // Storico scontrini
