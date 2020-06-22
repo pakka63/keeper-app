@@ -51,8 +51,6 @@ class ScontrinoController extends Controller
         $message = explode("\n",$e->getMessage());
         return $this->sendErr($message[0]);
       }
-      //anche questo funziona =
-      //$result =  Scontrino::select($this->fields)->where('stato', 0)->get();
       return response()->noContent();
     }
 
@@ -92,7 +90,7 @@ class ScontrinoController extends Controller
         $ticket->id_scontrino = $input['id_scontrino'];
         $ticket->id_printer = $input['id_printer'];
         $ticket->errore = $input['errore'] ??'';
-        $ticket->stato=1; // <<--in prova
+        $ticket->stato=1;
         $ticket->save();
         return response()->noContent();
     }
@@ -133,7 +131,7 @@ JSON di risposta:
      }]
 
         */
-    $answers = array();
+    $answersByUrl = array();
     $interattivo = !($input['afterPrint'] ?? false);
     foreach ($input['tickets'] as $i => $ticket) {
       if (empty($ticket['id'])) {
@@ -158,14 +156,18 @@ JSON di risposta:
           continue;
         }
       }
-      //Raggrupppo gli scontrini da inviare per printer id
+      //Raggruppo gli scontrini da inviare per url e printer id
       $printer = $ticket->id_printer;
+      $url = $ticket->response_url;
       $obj = /*(object)*/ array('ID_Documento' => $ticket->id_documento, "ticketNumber" => $ticket->id_scontrino, "dateTime" => $ticket->dataOraStampa);
-      if (!isset($answers[$printer])) {
-        $answers[$printer] = array();
+      if (!isset($answersByUrl[$url])) {
+        $answersByUrl[$url] = array();
       }
-      $answers[$printer][$ticket->id] = $obj;
-    }
+      if (!isset($answersByUrl[$url][$printer])) {
+        $answersByUrl[$url][$printer] = array();
+      }
+      $answersByUrl[$url][$printer][$ticket->id] = $obj;
+    } // foreach
 
     $sapWS = config('sapWS');
     $response = Http::withBasicAuth($sapWS['Oauth2']['clientId'], $sapWS['Oauth2']['clientPwd'])->post($sapWS['Oauth2']['tokenEndpoint']);
@@ -180,33 +182,36 @@ JSON di risposta:
       $token = $result->access_token;
       $errTxt = '';
     }
+    foreach ($answersByUrl as $url => $answers) {
 
-    foreach ($answers as $printer => $tickets) {
-      if ($token) {
-        //Ho un token d'accesso e quindi faccio la post
-        $payload = array(
-          "serialNumber" => substr($printer, 0, 10),
-          "printerModel" => substr($printer, 10),
-          "Answers"      => array_values($tickets)
-        );
-
-        // @todo l'endPoint dovrebbe essere preso dal record...
-        $response = Http::withToken($token)->post($sapWS['EndPoint'], $payload);
-        if (!$response->successful()) {
-          $errTxt = "Post to SAP Ws with error " . $response->getStatusCode() . '\n' . ($response->getBody() ?: $response->getReasonPhrase());
+      foreach ($answers as $printer => $tickets) {
+        if ($token) {
+          //Ho un token d'accesso e quindi faccio la post
+          $payload = array(
+            "serialNumber" => substr($printer, 0, 10),
+            "printerModel" => substr($printer, 10),
+            "Answers"      => array_values($tickets)
+          );
+        
+          // @todo l'endPoint dovrebbe essere preso dal record...
+          // $response = Http::withToken($token)->post($sapWS['EndPoint'], $payload);
+          $response = Http::withToken($token)->post($url, $payload);
+          if (!$response->successful()) {
+            $errTxt = "Post to SAP Ws with error " . $response->getStatusCode() . '\n' . ($response->getBody() ?: $response->getReasonPhrase());
+          } else {
+            // ad. es.: " {"multimap:Message1":{"message":["Invoice REIT-25-2020 updated successfully","Invoice REIT-26-2020 updated successfully"]}}"
+            $result = $response->getBody();
+            $errTxt = '';
+          };
+        }
+        // Qui registro l'esito dell'invio sullo scontrino
+        if ($errTxt > '') {
+          // Scrivo l'errore
+          $this->markErrors(array_keys($tickets), $errTxt);
         } else {
-          // ad. es.: " {"multimap:Message1":{"message":["Invoice REIT-25-2020 updated successfully","Invoice REIT-26-2020 updated successfully"]}}"
-          $result = $response->getBody();
-          $errTxt = '';
-        };
-      }
-      // Qui registro l'esito dell'invio sullo scontrino
-      if ($errTxt > '') {
-        // Scrivo l'errore
-        $this->markErrors(array_keys($tickets), $errTxt);
-      } else {
-        // Aggiorno gli scontrini
-        $this->updateStatus(array_keys($tickets), 2);
+          // Aggiorno gli scontrini
+          $this->updateStatus(array_keys($tickets), 2);
+        }
       }
     }
     if ($interattivo && $errTxt > '') {
@@ -277,14 +282,14 @@ JSON di risposta:
   private function markErrors($idList, $errorTxt)
   {
     $aggiornati = DB::table('scontrini')
-    ->whereIn('id', $idList)
-      ->update(['errore' => substr($errorTxt, 0, 190)]);
+                    ->whereIn('id', $idList)
+                    ->update(['errore' => substr($errorTxt, 0, 190)]);
   }
 
   private function updateStatus($idList, $status)
   {
     $aggiornati = DB::table('scontrini')
-      ->whereIn('id', $idList)
-      ->update(['stato' => $status]);
+                    ->whereIn('id', $idList)
+                    ->update(['stato' => $status]);
   }
 }
