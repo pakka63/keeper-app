@@ -15,17 +15,23 @@ class Scontrino extends Model
         'id_documento', 'prezzo', 'testo', 'in_prova', 'response_url', 'errore'
     ];
 
+    public function __construct()
+    {
+        parent::__construct();
+        $this->tz = config('app.timezone');
+    } 
+
     //Per formattare i risultati, uso i Mutators (https://laravel.com/docs/7.x/eloquent-mutators)
     public function getCreatedAtAttribute($value) {
-        return Carbon::parse($value)->format($this->dateTimeFormat);
+        return Carbon::parse($value)->timezone($this->tz)->format($this->dateTimeFormat);
     }
 
     public function getUpdatedAtAttribute($value) {
-        return Carbon::parse($value)->format($this->dateTimeFormat);
+        return Carbon::parse($value)->timezone($this->tz)->format($this->dateTimeFormat);
     }
 
     public function getDataOraStampaAttribute() {
-        return Carbon::parse($this->attributes['updated_at'])->format('ymdHi');
+        return Carbon::parse($this->attributes['updated_at'])->timezone($this->tz)->format('ymdHi');
     }
     public function getPrezzoAttribute($value) {
         return +$value; // Passo il dato come numerico in modo da conserire il sort corretto da VUE
