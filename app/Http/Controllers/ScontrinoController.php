@@ -11,6 +11,11 @@ use Throwable;
 
 class ScontrinoController extends Controller
 {
+    /*
+     * stato = 0 : Scontrino nuovo.
+     * stato = 1 : Scontrino stampato
+     * stato = 2 : Scontrino inviato a SAP
+     */
 
     /**
      * Visualizza la lista degli scontrini da emettere
@@ -78,6 +83,7 @@ class ScontrinoController extends Controller
         $input = $request->all();
 
         if(empty($input['id']) || empty($input['id_scontrino']) || empty($input['id_printer']) ) {
+            //Log::debug($input);
             return $this->sendErr("Parameters missing");
         }
         $ticket = Scontrino::find($input['id']);
@@ -136,7 +142,7 @@ JSON di risposta:
     foreach ($input['tickets'] as $i => $ticket) {
       if (empty($ticket['id'])) {
         if ($interattivo) {
-          return $this->sendErr('Ticket item #' . $i + 1 . ' is invalid');
+          return $this->sendErr('Ticket item #' . ($i + 1) . ' is invalid');
         } else {
           continue;
         }
@@ -249,7 +255,7 @@ JSON di risposta:
     }
     foreach ($input['tickets'] as $i => $ticket) {
       if (empty($ticket['ID_Documento']) || empty($ticket['Text']) || empty($ticket['price']) || !is_numeric($ticket['price'])) {
-        return $this->sendErr('Ticket item #' . $i + 1 . ' is invalid');
+        return $this->sendErr('Ticket item #' . ($i + 1) . ' is invalid');
       }
     }
     // Qui adesso archivio i record.
